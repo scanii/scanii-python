@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from scanii import ScaniiClient
+from scanii import ScaniiClient, ScaniiTarget
 from scanii.errors import ScaniiAuthError, ScaniiError
 
 KEY = "key"
@@ -34,7 +34,7 @@ def _is_cli_reachable() -> bool:
     if _cli_available is not None:
         return _cli_available
     try:
-        c = ScaniiClient(key=KEY, secret=SECRET, endpoint=ENDPOINT, timeout=2.0)
+        c = ScaniiClient(key=KEY, secret=SECRET, target=ScaniiTarget(ENDPOINT), timeout=2.0)
         c.ping()
         _cli_available = True
     except Exception:
@@ -50,7 +50,7 @@ def require_cli():
 
 @pytest.fixture
 def client() -> ScaniiClient:
-    return ScaniiClient(key=KEY, secret=SECRET, endpoint=ENDPOINT)
+    return ScaniiClient(key=KEY, secret=SECRET, target=ScaniiTarget(ENDPOINT))
 
 
 def make_malware_fixture() -> Path:
@@ -74,7 +74,7 @@ class TestPing:
         assert client.ping() is True
 
     def test_ping_with_bad_credentials_raises_auth_error(self):
-        bad = ScaniiClient(key="bad", secret="creds", endpoint=ENDPOINT)
+        bad = ScaniiClient(key="bad", secret="creds", target=ScaniiTarget(ENDPOINT))
         with pytest.raises(ScaniiAuthError):
             bad.ping()
 
@@ -225,7 +225,7 @@ class TestAuthTokenLifecycle:
         # Create token and use it for a client — may self-skip on older cli
         # if token-auth ping is not supported.
         token = client.create_auth_token(60)
-        token_client = ScaniiClient(token=token.id, endpoint=ENDPOINT, timeout=2.0)
+        token_client = ScaniiClient(token=token.id, target=ScaniiTarget(ENDPOINT), timeout=2.0)
         try:
             result = token_client.ping()
             assert result is True
@@ -241,7 +241,7 @@ class TestAuthTokenLifecycle:
 
 class TestErrors:
     def test_bad_credentials_raises_auth_error(self):
-        bad = ScaniiClient(key="bad", secret="creds", endpoint=ENDPOINT)
+        bad = ScaniiClient(key="bad", secret="creds", target=ScaniiTarget(ENDPOINT))
         path = make_clean_file()
         with pytest.raises(ScaniiAuthError):
             bad.process_file(path)

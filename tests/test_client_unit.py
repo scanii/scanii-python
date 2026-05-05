@@ -5,11 +5,12 @@ from __future__ import annotations
 import io
 import json
 from http.client import HTTPMessage
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scanii import ScaniiClient  # noqa: E402
+from scanii import ScaniiClient, ScaniiTarget
 from scanii.errors import ScaniiAuthError, ScaniiError, ScaniiRateLimitError
 from scanii.models import (
     ScaniiAuthToken,
@@ -25,10 +26,11 @@ from scanii.models import (
 ENDPOINT = "http://localhost:4000"
 KEY = "key"
 SECRET = "secret"
+TARGET = ScaniiTarget(ENDPOINT)
 
 
 def _make_client(**kwargs) -> ScaniiClient:
-    return ScaniiClient(key=KEY, secret=SECRET, endpoint=ENDPOINT, **kwargs)
+    return ScaniiClient(key=KEY, secret=SECRET, target=TARGET, **kwargs)
 
 
 def _mock_response(status: int, body: str, headers: dict | None = None) -> MagicMock:
@@ -63,6 +65,75 @@ def _pending_body(id: str = "pending-id") -> str:
 
 
 # ---------------------------------------------------------------------------
+# ScaniiTarget
+# ---------------------------------------------------------------------------
+
+class TestScaniiTarget:
+    def test_regional_constants_exist(self):
+        for name in ("US1", "EU1", "EU2", "AP1", "AP2", "CA1"):
+            assert isinstance(getattr(ScaniiTarget, name), ScaniiTarget)
+
+    def test_regional_constant_urls(self):
+        assert ScaniiTarget.US1.endpoint == "https://api-us1.scanii.com"
+        assert ScaniiTarget.EU1.endpoint == "https://api-eu1.scanii.com"
+        assert ScaniiTarget.EU2.endpoint == "https://api-eu2.scanii.com"
+        assert ScaniiTarget.AP1.endpoint == "https://api-ap1.scanii.com"
+        assert ScaniiTarget.AP2.endpoint == "https://api-ap2.scanii.com"
+        assert ScaniiTarget.CA1.endpoint == "https://api-ca1.scanii.com"
+
+    def test_resolve_absolute_path(self):
+        t = ScaniiTarget("http://localhost:4000")
+        assert t.resolve("/v2.2/files") == "http://localhost:4000/v2.2/files"
+
+    def test_resolve_regional_constant(self):
+        assert ScaniiTarget.US1.resolve("/v2.2/ping") == "https://api-us1.scanii.com/v2.2/ping"
+
+    def test_empty_url_raises(self):
+        with pytest.raises(ValueError, match="non-empty"):
+            ScaniiTarget("")
+
+    def test_equality_same_url(self):
+        a = ScaniiTarget("http://localhost:4000")
+        b = ScaniiTarget("http://localhost:4000")
+        assert a == b
+
+    def test_inequality_different_url(self):
+        assert ScaniiTarget("http://localhost:4000") != ScaniiTarget("http://localhost:5000")
+
+    def test_hash_equal_for_same_url(self):
+        a = ScaniiTarget("http://localhost:4000")
+        b = ScaniiTarget("http://localhost:4000")
+        assert hash(a) == hash(b)
+        assert {a, b} == {a}  # set deduplicates
+
+    def test_repr(self):
+        assert repr(ScaniiTarget("http://localhost:4000")) == "ScaniiTarget('http://localhost:4000')"
+
+    def test_constants_match_openapi_spec(self):
+        """Drift detection: constants must match openapi/src/v22.yaml servers block."""
+        import re
+
+        spec_path = Path(__file__).parent.parent.parent / "openapi" / "src" / "v22.yaml"
+        if not spec_path.exists():
+            pytest.skip("openapi/src/v22.yaml not present — run from workspace root to enable")
+        text = spec_path.read_text(encoding="utf-8")
+        urls = set(re.findall(r"- url: (https://api-\S+\.scanii\.com)", text))
+        constants = {
+            ScaniiTarget.US1.endpoint,
+            ScaniiTarget.EU1.endpoint,
+            ScaniiTarget.EU2.endpoint,
+            ScaniiTarget.AP1.endpoint,
+            ScaniiTarget.AP2.endpoint,
+            ScaniiTarget.CA1.endpoint,
+        }
+        assert urls == constants, (
+            f"ScaniiTarget constants drift from openapi spec.\n"
+            f"  Spec:      {sorted(urls)}\n"
+            f"  Constants: {sorted(constants)}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Constructor validation
 # ---------------------------------------------------------------------------
 
@@ -72,36 +143,32 @@ class TestConstructor:
         assert c._user_agent == "scanii-python/1.0.0"
 
     def test_token_accepted(self):
-        c = ScaniiClient(token="mytoken", endpoint=ENDPOINT)
+        c = ScaniiClient(token="mytoken", target=TARGET)
         assert "Basic" in c._auth_header
 
     def test_both_key_and_token_raises(self):
         with pytest.raises(ValueError, match="not both"):
-            ScaniiClient(key="k", secret="s", token="t", endpoint=ENDPOINT)
+            ScaniiClient(key="k", secret="s", token="t", target=TARGET)
 
     def test_missing_key_raises(self):
         with pytest.raises(ValueError):
-            ScaniiClient(endpoint=ENDPOINT)
+            ScaniiClient(target=TARGET)
 
     def test_missing_secret_raises(self):
         with pytest.raises(ValueError):
-            ScaniiClient(key="k", endpoint=ENDPOINT)
+            ScaniiClient(key="k", target=TARGET)
 
     def test_key_with_colon_raises(self):
         with pytest.raises(ValueError, match="colon"):
-            ScaniiClient(key="bad:key", secret="s", endpoint=ENDPOINT)
+            ScaniiClient(key="bad:key", secret="s", target=TARGET)
 
-    def test_empty_endpoint_raises(self):
-        with pytest.raises(ValueError):
-            ScaniiClient(key=KEY, secret=SECRET, endpoint="")
+    def test_missing_target_raises_with_helpful_message(self):
+        with pytest.raises(TypeError, match="ScaniiTarget"):
+            ScaniiClient(key="x", secret="y")  # type: ignore[call-arg]
 
-    def test_non_http_endpoint_raises(self):
-        with pytest.raises(ValueError, match="http"):
-            ScaniiClient(key=KEY, secret=SECRET, endpoint="ftp://example.com")
-
-    def test_trailing_slash_stripped(self):
-        c = ScaniiClient(key=KEY, secret=SECRET, endpoint="http://localhost:4000///")
-        assert c._endpoint == "http://localhost:4000"
+    def test_wrong_target_type_raises_with_helpful_message(self):
+        with pytest.raises(TypeError, match="ScaniiTarget"):
+            ScaniiClient(key="x", secret="y", target="http://localhost:4000")  # type: ignore[arg-type]
 
     def test_user_agent_reads_from_version_module(self):
         from scanii._version import __version__

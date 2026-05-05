@@ -13,10 +13,12 @@ from scanii.models import (
     ScaniiTraceEvent,
     ScaniiTraceResult,
 )
+from scanii.target import ScaniiTarget
 
 __all__ = [
     "__version__",
     "ScaniiClient",
+    "ScaniiTarget",
     "ScaniiProcessingResult",
     "ScaniiPendingResult",
     "ScaniiAuthToken",

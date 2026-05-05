@@ -19,9 +19,9 @@ Distribution name is `scanii-python`; import as `from scanii import ScaniiClient
 ## Quickstart
 
 ```python
-from scanii import ScaniiClient
+from scanii import ScaniiClient, ScaniiTarget
 
-client = ScaniiClient(key="your-key", secret="your-secret")
+client = ScaniiClient(key="your-key", secret="your-secret", target=ScaniiTarget.US1)
 result = client.process_file("./document.pdf")
 print(result.findings)  # [] when clean
 ```
@@ -47,15 +47,16 @@ with open("./large.pdf", "rb") as f:
 
 ```python
 ScaniiClient(
+    *,
     key: str | None = None,
     secret: str | None = None,
     token: str | None = None,
-    endpoint: str = "https://api.scanii.com",
+    target: ScaniiTarget,
     timeout: float = 60.0,
 )
 ```
 
-Supply either `key` + `secret` (HTTP Basic Auth) or `token` (auth-token authentication). Mixing both raises `ValueError`.
+Supply either `key` + `secret` (HTTP Basic Auth) or `token` (auth-token authentication). Mixing both raises `ValueError`. `target` is required — see [Regional Endpoints](#regional-endpoints).
 
 ### File scanning
 
@@ -91,22 +92,28 @@ Supply either `key` + `secret` (HTTP Basic Auth) or `token` (auth-token authenti
 
 ## Regional Endpoints
 
-| Region | Endpoint |
-|---|---|
-| United States (default) | `https://api.scanii.com` |
-| European Union | `https://api-eu.scanii.com` |
+Choose a regional target explicitly. Six regional constants are available: `US1`, `EU1`, `EU2`, `AP1`, `AP2`, `CA1`. Latency-based routing (`AUTO` in other Scanii SDKs) is intentionally not provided — chain-of-custody and data-residency compliance require an explicit regional choice. For local testing against scanii-cli, construct a target with an arbitrary URL: `ScaniiTarget("http://localhost:4000")`.
+
+| Constant | URL | Location |
+|---|---|---|
+| `ScaniiTarget.US1` | `https://api-us1.scanii.com` | Virginia, USA |
+| `ScaniiTarget.EU1` | `https://api-eu1.scanii.com` | Dublin, Ireland |
+| `ScaniiTarget.EU2` | `https://api-eu2.scanii.com` | London, United Kingdom |
+| `ScaniiTarget.AP1` | `https://api-ap1.scanii.com` | Sydney, Australia |
+| `ScaniiTarget.AP2` | `https://api-ap2.scanii.com` | Singapore |
+| `ScaniiTarget.CA1` | `https://api-ca1.scanii.com` | Montreal, Canada |
 
 ```python
-client = ScaniiClient(key="your-key", secret="your-secret", endpoint="https://api-eu.scanii.com")
+client = ScaniiClient(key="your-key", secret="your-secret", target=ScaniiTarget.EU1)
 ```
 
 ## Error Handling
 
 ```python
-from scanii import ScaniiClient, ScaniiError, ScaniiAuthError, ScaniiRateLimitError
+from scanii import ScaniiClient, ScaniiTarget, ScaniiError, ScaniiAuthError, ScaniiRateLimitError
 import time
 
-client = ScaniiClient(key="your-key", secret="your-secret")
+client = ScaniiClient(key="your-key", secret="your-secret", target=ScaniiTarget.US1)
 
 try:
     result = client.process_file("./document.pdf")
@@ -134,7 +141,7 @@ pytest
 ```
 
 ```python
-client = ScaniiClient(key="key", secret="secret", endpoint="http://localhost:4000")
+client = ScaniiClient(key="key", secret="secret", target=ScaniiTarget("http://localhost:4000"))
 result = client.ping()  # True
 ```
 

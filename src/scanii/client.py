@@ -19,6 +19,7 @@ from scanii.models import (
     ScaniiProcessingResult,
     ScaniiTraceResult,
 )
+from scanii.target import ScaniiTarget
 
 _API_VERSION = "/v2.2"
 
@@ -29,39 +30,37 @@ class ScaniiClient:
     Construct with either ``key`` + ``secret`` (HTTP Basic Auth) or ``token``
     (auth-token authentication). Mixing the two raises ``ValueError``.
 
+    ``target`` is required — choose a regional constant for production or
+    construct a custom ``ScaniiTarget`` for local testing::
+
+        client = ScaniiClient(key="your-key", secret="your-secret", target=ScaniiTarget.US1)
+
     Per SDK Principle 3 the client is integration-only: it does not retry,
     batch, or paginate. Each public method maps to exactly one HTTP request.
 
     See https://scanii.github.io/openapi/v22/
-
-    Example — scan a file from disk::
-
-        client = ScaniiClient(key="your-key", secret="your-secret")
-        result = client.process_file("./file.pdf")
-        print(result.findings)  # [] when clean
-
-    Example — scan content already in memory::
-
-        import io
-        result = client.process(io.BytesIO(my_bytes), filename="upload.bin")
     """
 
     def __init__(
         self,
+        *,
         key: str | None = None,
         secret: str | None = None,
         token: str | None = None,
-        endpoint: str = "https://api.scanii.com",
+        target: ScaniiTarget | None = None,
         timeout: float = 60.0,
     ) -> None:
+        if not isinstance(target, ScaniiTarget):
+            raise TypeError(
+                "ScaniiClient requires a ScaniiTarget for data residency compliance. Examples:\n"
+                "  ScaniiClient(key=..., secret=..., target=ScaniiTarget.US1)\n"
+                "  ScaniiClient(key=..., secret=..., target=ScaniiTarget.EU1)\n"
+                "For local testing against scanii-cli:\n"
+                '  ScaniiClient(key=..., secret=..., target=ScaniiTarget("http://localhost:4000"))\n'
+                "Available regional constants: US1, EU1, EU2, AP1, AP2, CA1."
+            )
         self._auth_header = self._build_auth_header(key, secret, token)
-        self._endpoint = endpoint.rstrip("/")
-        if not self._endpoint:
-            raise ValueError("endpoint must not be empty")
-        parsed = urllib.parse.urlparse(self._endpoint)
-        if parsed.scheme not in ("http", "https"):
-            raise ValueError("endpoint must be http or https")
-        self._base_url = self._endpoint + _API_VERSION
+        self._target = target
         self._timeout = float(timeout)
         self._user_agent = f"scanii-python/{__version__}"
 
@@ -386,7 +385,7 @@ class ScaniiClient:
         content_type: str | None = None,
         content_length: int | None = None,
     ) -> tuple[int, str, dict[str, str]]:
-        url = self._base_url + path
+        url = self._target.resolve(_API_VERSION + path)
         headers: dict[str, str] = {
             "Authorization": self._auth_header,
             "User-Agent": self._user_agent,

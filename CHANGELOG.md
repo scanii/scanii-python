@@ -8,7 +8,7 @@ Initial release. Replaces the unmaintained `scanii.py` skeleton.
 
 ### API surface
 
-- `ScaniiClient(key, secret, endpoint, timeout)` — synchronous client, zero runtime dependencies, stdlib only
+- `ScaniiClient(*, key, secret, target, timeout)` — synchronous client, zero runtime dependencies, stdlib only; `target` is a required `ScaniiTarget` instance
 - `process(content, filename, content_type, metadata, callback)` — stream-first synchronous scan; `content` is any object with `read(n) -> bytes`
 - `process_file(path, metadata, callback)` — path convenience; opens the file and delegates to `process`
 - `process_async(content, filename, content_type, metadata, callback)` — stream-first async-on-server submission
@@ -38,6 +38,10 @@ The multipart encoder builds a chained reader (prologue bytes → caller's IO �
 ### Deprecations (from day one)
 
 - `ScaniiProcessingResult.error` — ships deprecated from day one. The server never populates this field on successful responses; errors arrive as non-2xx HTTP responses that raise `ScaniiError` subclasses. Constructing the dataclass with a non-`None` `error` value emits a `DeprecationWarning`. Will be removed in a future major version.
+
+### Regional endpoints
+
+Explicit `ScaniiTarget` required at construction. Regional endpoints are typed constants on `ScaniiTarget` (`US1`, `EU1`, `EU2`, `AP1`, `AP2`, `CA1`). The constructor takes a `target: ScaniiTarget` parameter with no default — customers must choose explicitly. For testing against scanii-cli or other local mocks, construct `ScaniiTarget("http://localhost:4000")` directly. Latency-based routing (`AUTO` in other Scanii SDKs) is intentionally not provided in Python; chain-of-custody and data-residency compliance require an explicit regional choice.
 
 ### Notes
 
