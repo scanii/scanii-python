@@ -41,5 +41,4 @@ The multipart encoder builds a chained reader (prologue bytes â†’ caller's IO â†
 
 ### Notes
 
-- Supersedes the `scanii==0.0.1` placeholder when PyPI name override clears
-- PyPI name override pending (https://github.com/pypi/support/issues/10444); install from source until then: `pip install git+https://github.com/scanii/scanii-python.git@main`
+- Published as `scanii-python` on PyPI; import name is `scanii`

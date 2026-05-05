@@ -5,10 +5,10 @@ Python SDK for the [Scanii](https://scanii.com) content security API.
 ## Installation
 
 ```bash
-pip install scanii
+pip install scanii-python
 ```
 
-> _Until the PyPI name is registered, install from source: `pip install git+https://github.com/scanii/scanii-python.git@main`._
+Distribution name is `scanii-python`; import as `from scanii import ScaniiClient`.
 
 ## SDK Principles
 

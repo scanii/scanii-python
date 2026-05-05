@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "scanii"
+name = "scanii-python"
 version = "1.0.0"
 description = "Zero-dependency Python SDK for the Scanii content security API"
 readme = "README.md"
