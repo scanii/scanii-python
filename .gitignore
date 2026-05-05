@@ -1,4 +1,15 @@
-*.pyc
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
 *.db
 *.swp
-.DS_Store
