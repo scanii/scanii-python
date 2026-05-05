@@ -194,9 +194,10 @@ class TestProcessFile:
             c = _make_client()
             result = c.process_file(p)
         assert isinstance(result, ScaniiProcessingResult)
-        call_args = m.call_args[0][0]
-        # filename derived from basename
-        assert b"test.bin" in call_args.data
+        req = m.call_args[0][0]
+        # The prologue is a BytesIO and contains the filename even after the file closes.
+        # Reading _parts[0] doesn't touch the actual file.
+        assert b"test.bin" in req.data._parts[0].read()
 
 
 # ---------------------------------------------------------------------------
@@ -289,7 +290,7 @@ class TestProcessFromUrl:
         assert isinstance(result, ScaniiProcessingResult)
         call_args = m.call_args[0][0]
         assert b"multipart/form-data" in call_args.get_header("Content-type").encode()
-        assert b"location" in call_args.data
+        assert b"location" in call_args.data.read()
 
     def test_process_from_url_empty_location_raises(self):
         with pytest.raises(ValueError, match="location"):
@@ -435,3 +436,71 @@ class TestUserAgent:
         from scanii._version import __version__
         c = _make_client()
         assert c._user_agent == f"scanii-python/{__version__}"
+
+
+# ---------------------------------------------------------------------------
+# Streaming encoder — true streaming verification
+# ---------------------------------------------------------------------------
+
+class TestStreamingEncoder:
+    def test_encoder_does_not_read_file_body_at_construction_time(self, tmp_path):
+        """The encoder must not read the caller's IO at construction time."""
+        from scanii._multipart import encode
+
+        p = tmp_path / "payload.bin"
+        p.write_bytes(b"x" * 4096)
+        with open(p, "rb") as f:
+            stream, ct, length = encode({"key": "val"}, file_obj=f, filename="payload.bin")
+            # The file body must NOT have been read yet
+            assert f.tell() == 0, (
+                "encoder read the file at construction time; "
+                "file IO must be deferred until urllib reads from the chained stream"
+            )
+            # Reading now (file still open) must produce the correct total length
+            body = stream.read()
+        assert len(body) == length
+
+    def test_encoder_file_content_present_in_stream(self, tmp_path):
+        from scanii._multipart import encode
+
+        content = b"sentinel-content-abc123"
+        p = tmp_path / "data.bin"
+        p.write_bytes(content)
+        with open(p, "rb") as f:
+            stream, _ct, _length = encode({}, file_obj=f, filename="data.bin")
+            body = stream.read()  # must read while file is still open
+        assert content in body
+
+    def test_encoder_spooled_fallback_for_unseekable_io(self):
+        """IOs without fileno/seek/getvalue buffer via SpooledTemporaryFile."""
+        from scanii._multipart import encode
+
+        class _UnseekableIO:
+            def __init__(self, data: bytes) -> None:
+                self._data = data
+                self._pos = 0
+
+            def read(self, n: int = -1) -> bytes:
+                if n < 0:
+                    result = self._data[self._pos:]
+                    self._pos = len(self._data)
+                    return result
+                result = self._data[self._pos:self._pos + n]
+                self._pos += len(result)
+                return result
+
+        content = b"fallback-test-payload"
+        fake_io = _UnseekableIO(content)
+        stream, ct, length = encode({}, file_obj=fake_io, filename="test.bin")
+        body = stream.read()
+        assert content in body
+        assert len(body) == length, "reported length must match actual body size"
+
+    def test_content_length_header_set_for_stream_body(self):
+        """Content-Length is included in the request when body is a stream."""
+        body_resp = _processing_body()
+        mock_resp = _mock_response(201, body_resp)
+        with patch("urllib.request.urlopen", return_value=mock_resp) as m:
+            _make_client().process(io.BytesIO(b"data"), filename="test.bin")
+        req = m.call_args[0][0]
+        assert req.get_header("Content-length") is not None

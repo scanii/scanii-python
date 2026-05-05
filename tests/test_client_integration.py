@@ -106,6 +106,14 @@ class TestProcessFile:
         retrieved = client.retrieve(result.id)
         assert retrieved.id == result.id
 
+    def test_process_file_1mib_synthetic_upload(self, client):
+        """Verify the streaming path handles a 1 MiB upload end-to-end."""
+        path = Path(tempfile.gettempdir()) / "scanii-test-1mib.bin"
+        path.write_bytes(b"A" * (1024 * 1024))
+        result = client.process_file(path)
+        assert result.id
+        assert result.findings == ()
+
 
 # ---------------------------------------------------------------------------
 # process (stream-based — IO-like object)

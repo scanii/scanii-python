@@ -91,9 +91,12 @@ class ScaniiClient:
         :return: :class:`~scanii.ScaniiProcessingResult`
         """
         fields = self._build_fields(metadata, callback)
-        body, ct = _multipart_encode(fields, file_obj=content, filename=filename,
-                                     content_type=content_type)
-        status, resp_body, headers = self._post("/files", body=body, content_type=ct)
+        body_stream, ct, content_length = _multipart_encode(
+            fields, file_obj=content, filename=filename, content_type=content_type
+        )
+        status, resp_body, headers = self._post(
+            "/files", body=body_stream, content_type=ct, content_length=content_length
+        )
         self._raise_for_status(status, resp_body, headers, expected=201)
         return ScaniiProcessingResult.from_response(resp_body, headers)
 
@@ -141,9 +144,12 @@ class ScaniiClient:
         :return: :class:`~scanii.ScaniiPendingResult`
         """
         fields = self._build_fields(metadata, callback)
-        body, ct = _multipart_encode(fields, file_obj=content, filename=filename,
-                                     content_type=content_type)
-        status, resp_body, headers = self._post("/files/async", body=body, content_type=ct)
+        body_stream, ct, content_length = _multipart_encode(
+            fields, file_obj=content, filename=filename, content_type=content_type
+        )
+        status, resp_body, headers = self._post(
+            "/files/async", body=body_stream, content_type=ct, content_length=content_length
+        )
         self._raise_for_status(status, resp_body, headers, expected=202)
         return ScaniiPendingResult.from_response(resp_body, headers)
 
@@ -223,8 +229,10 @@ class ScaniiClient:
         fields = self._build_fields(metadata, callback)
         fields["location"] = location
         # Fields-only multipart — POST /v2.2/files rejects urlencoded on this endpoint.
-        body, ct = _multipart_encode(fields)
-        status, resp_body, headers = self._post("/files", body=body, content_type=ct)
+        body_stream, ct, content_length = _multipart_encode(fields)
+        status, resp_body, headers = self._post(
+            "/files", body=body_stream, content_type=ct, content_length=content_length
+        )
         self._raise_for_status(status, resp_body, headers, expected=201)
         return ScaniiProcessingResult.from_response(resp_body, headers)
 
@@ -359,16 +367,24 @@ class ScaniiClient:
         return fields
 
     def _post(
-        self, path: str, body: bytes, content_type: str
+        self,
+        path: str,
+        body: bytes | IO[bytes],
+        content_type: str,
+        content_length: int | None = None,
     ) -> tuple[int, str, dict[str, str]]:
-        return self._request("POST", path, body=body, content_type=content_type)
+        return self._request(
+            "POST", path, body=body, content_type=content_type,
+            content_length=content_length
+        )
 
     def _request(
         self,
         method: str,
         path: str,
-        body: bytes | None = None,
+        body: bytes | IO[bytes] | None = None,
         content_type: str | None = None,
+        content_length: int | None = None,
     ) -> tuple[int, str, dict[str, str]]:
         url = self._base_url + path
         headers: dict[str, str] = {
@@ -378,6 +394,10 @@ class ScaniiClient:
         }
         if content_type:
             headers["Content-Type"] = content_type
+        # Set Content-Length explicitly for stream bodies (urllib can't compute it).
+        # For bytes bodies urllib sets it automatically via len(); we leave that alone.
+        if content_length is not None:
+            headers["Content-Length"] = str(content_length)
 
         req = urllib.request.Request(url, data=body, headers=headers, method=method)
         try:

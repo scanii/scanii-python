@@ -22,7 +22,10 @@ Initial release. Replaces the unmaintained `scanii.py` skeleton.
 
 ### Streaming design
 
-The SDK uses a stream-first API per the workspace streaming standardization:
+True socket-level streaming for `process` and `process_file` — uploads of any size do not buffer the full body in memory. Matches the cross-SDK streaming standard.
+
+The multipart encoder builds a chained reader (prologue bytes → caller's IO → epilogue bytes) without reading the file body at construction time. The file content is transferred directly to the socket as urllib reads from the chain. `process_file(path)` streams from disk through the chained reader to the socket without intermediate buffering. IOs without `fileno()` or `seek`/`tell` (pipes, generators) buffer through `SpooledTemporaryFile(max_size=1 MiB)` — small payloads stay in memory, larger ones spill to disk.
+
 `process(content, filename)` accepts any IO-like object (`io.BytesIO`, open file handles, network streams). `process_file(path)` is a thin wrapper for the common disk-file case. There is exactly one HTTP-handling code path; the file convenience is syntactic sugar.
 
 ### Error handling
