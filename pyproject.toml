@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scanii-python"
-version = "1.0.0"
+version = "1.0.1"
 description = "Zero-dependency Python SDK for the Scanii content security API"
 readme = "README.md"
 license = "Apache-2.0"

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 — 2026-08-15
+
+### Changed
+
+- Bumped CI actions: `actions/checkout` v4 → v7, `actions/setup-python` v5 → v7.
+  (Dev dependencies are unpinned ranges resolved at install time; runtime
+  `dependencies` remains empty — the published package is unchanged.)
+
 ## 1.0.0 — 2026-05-05
 
 Initial release. Replaces the unmaintained `scanii.py` skeleton.
