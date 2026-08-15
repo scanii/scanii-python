@@ -139,8 +139,10 @@ class TestScaniiTarget:
 
 class TestConstructor:
     def test_key_and_secret_accepted(self):
+        from scanii._version import __version__
+
         c = _make_client()
-        assert c._user_agent == "scanii-python/1.0.0"
+        assert c._user_agent == f"scanii-python/{__version__}"
 
     def test_token_accepted(self):
         c = ScaniiClient(token="mytoken", target=TARGET)
