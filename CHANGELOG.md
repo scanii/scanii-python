@@ -14,6 +14,12 @@
   The two resources are independent: deleting one does not remove the other.
   To erase a scan entirely, call both.
 
+### Changed
+
+- Dropped the "v2.2 preview" designation from `retrieve_trace()` and
+  `process_from_url()` in the README and docstrings. Neither is marked preview
+  in the API contract; the methods themselves are unchanged.
+
 ## 1.0.1 — 2026-08-15
 
 ### Changed

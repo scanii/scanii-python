@@ -29,9 +29,6 @@ class ScaniiTraceEvent:
 class ScaniiTraceResult:
     """Result of :meth:`~scanii.ScaniiClient.retrieve_trace`.
 
-    This is a v2.2 preview surface; the API shape may shift before it is
-    marked stable.
-
     See https://scanii.github.io/openapi/v22/
     """
 

@@ -182,9 +182,6 @@ class ScaniiClient:
 
         Returns ``None`` when no trace exists for the given id (HTTP 404).
 
-        This is a v2.2 preview surface; the API shape may shift before it is
-        marked stable.
-
         :param id: processing id returned by :meth:`process` or :meth:`process_file`
         :see: https://scanii.github.io/openapi/v22/ GET /files/{id}/trace
         :return: :class:`~scanii.ScaniiTraceResult` or ``None``
@@ -213,9 +210,6 @@ class ScaniiClient:
 
         ``location`` must be a string URL — matches the existing :meth:`fetch`
         string-URL convention and the Java reference (``processFromUrl(String)``).
-
-        This is a v2.2 preview surface; the API shape may shift before it is
-        marked stable.
 
         :param location: URL of the content to scan
         :param callback: URL to POST the result to on completion

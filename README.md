@@ -70,17 +70,12 @@ Supply either `key` + `secret` (HTTP Basic Auth) or `token` (auth-token authenti
 | `delete(id)` | Delete a scan result. Returns `True`; the processing trace is left intact |
 | `delete_trace(id)` | Delete a processing trace. Returns `True`; the scan result is left intact |
 | `fetch(url, metadata=None, callback=None)` | Server-side async fetch-and-scan of a remote URL |
+| `process_from_url(location, callback=None, metadata=None)` | Synchronous scan of a remote URL via `POST /files` |
+| `retrieve_trace(id)` | Retrieve processing event trace; returns `None` on 404 |
 
 `delete()` and `delete_trace()` act on independent resources: deleting a scan result
 leaves its trace readable, and deleting a trace leaves the result readable. To erase a
 scan entirely, call both.
-
-### v2.2 preview methods
-
-| Method | Description |
-|---|---|
-| `retrieve_trace(id)` **(v2.2 preview)** | Retrieve processing event trace; returns `None` on 404 |
-| `process_from_url(location, callback=None, metadata=None)` **(v2.2 preview)** | Synchronous scan of a remote URL via `POST /files` |
 
 ### Auth tokens
 
