@@ -235,6 +235,45 @@ class ScaniiClient:
         self._raise_for_status(status, resp_body, headers, expected=201)
         return ScaniiProcessingResult.from_response(resp_body, headers)
 
+    def delete(self, id: str) -> bool:
+        """Delete a previously processed file result.
+
+        The processing trace is a separate resource and is **not** removed by
+        this call — it stays readable via :meth:`retrieve_trace` until you
+        delete it with :meth:`delete_trace`. To erase a scan entirely, call
+        both.
+
+        :param id: processing id returned by :meth:`process` or :meth:`process_file`
+        :see: https://scanii.github.io/openapi/v22/ DELETE /files/{id}
+        :return: ``True`` on success (HTTP 204)
+        :raises ScaniiError: when no result exists for the id (HTTP 404), which is
+            also what a repeated delete of the same id returns
+        """
+        if not id:
+            raise ValueError("id must not be empty")
+        status, resp_body, headers = self._request("DELETE", f"/files/{_urlencode(id)}")
+        self._raise_for_status(status, resp_body, headers, expected=204)
+        return True
+
+    def delete_trace(self, id: str) -> bool:
+        """Delete the processing trace for a previously processed file.
+
+        Leaves the processing result itself untouched.
+
+        :param id: processing id returned by :meth:`process` or :meth:`process_file`
+        :see: https://scanii.github.io/openapi/v22/ DELETE /files/{id}/trace
+        :return: ``True`` on success (HTTP 204)
+        :raises ScaniiError: when no trace exists for the id (HTTP 404), which is
+            also what a repeated delete of the same id returns
+        """
+        if not id:
+            raise ValueError("id must not be empty")
+        status, resp_body, headers = self._request(
+            "DELETE", f"/files/{_urlencode(id)}/trace"
+        )
+        self._raise_for_status(status, resp_body, headers, expected=204)
+        return True
+
     # ------------------------------------------------------------------
     # Other API methods
     # ------------------------------------------------------------------

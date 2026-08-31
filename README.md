@@ -67,7 +67,13 @@ Supply either `key` + `secret` (HTTP Basic Auth) or `token` (auth-token authenti
 | `process_async(content, filename, content_type=None, metadata=None, callback=None)` | Async-on-server scan of an IO-like object; returns `ScaniiPendingResult` |
 | `process_async_file(path, metadata=None, callback=None)` | Async-on-server scan of a file on disk; returns `ScaniiPendingResult` |
 | `retrieve(id)` | Retrieve a previous scan result |
+| `delete(id)` | Delete a scan result. Returns `True`; the processing trace is left intact |
+| `delete_trace(id)` | Delete a processing trace. Returns `True`; the scan result is left intact |
 | `fetch(url, metadata=None, callback=None)` | Server-side async fetch-and-scan of a remote URL |
+
+`delete()` and `delete_trace()` act on independent resources: deleting a scan result
+leaves its trace readable, and deleting a trace leaves the result readable. To erase a
+scan entirely, call both.
 
 ### v2.2 preview methods
 
