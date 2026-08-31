@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.0 — 2026-08-31
+
+### Added
+
+- `ScaniiClient.delete(id)` — deletes a previously processed file result
+  (`DELETE /files/{id}`). Returns `True` on success; the processing trace is
+  left intact.
+- `ScaniiClient.delete_trace(id)` — deletes the processing trace separately
+  (`DELETE /files/{id}/trace`). Returns `True` on success; the processing
+  result is left intact.
+
+  The two resources are independent: deleting one does not remove the other.
+  To erase a scan entirely, call both.
+
+### Changed
+
+- Dropped the "v2.2 preview" designation from `retrieve_trace()` and
+  `process_from_url()` in the README and docstrings. Neither is marked preview
+  in the API contract; the methods themselves are unchanged.
+
 ## 1.0.1 — 2026-08-15
 
 ### Changed

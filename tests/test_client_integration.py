@@ -204,6 +204,59 @@ class TestProcessFromUrl:
 
 
 # ---------------------------------------------------------------------------
+# v2.2 surface — delete / delete_trace (hard-assert, no self-skip)
+#
+# The result and the trace are independent resources: deleting one must leave
+# the other readable. These assertions are the whole point of the split, so they
+# are deliberately strict.
+# ---------------------------------------------------------------------------
+
+class TestDelete:
+    UNKNOWN_ID = "00000000-0000-0000-0000-000000000000"
+
+    def test_delete_removes_result_and_leaves_trace(self, client):
+        result = client.process_file(make_clean_file())
+
+        assert client.delete(result.id) is True
+
+        with pytest.raises(ScaniiError):
+            client.retrieve(result.id)
+        assert client.retrieve_trace(result.id) is not None, (
+            "trace must survive deletion of the result"
+        )
+
+    def test_delete_trace_removes_trace_and_leaves_result(self, client):
+        result = client.process_file(make_clean_file())
+
+        assert client.delete_trace(result.id) is True
+
+        assert client.retrieve_trace(result.id) is None
+        assert client.retrieve(result.id).id == result.id, (
+            "result must survive deletion of the trace"
+        )
+
+    def test_repeated_delete_raises(self, client):
+        result = client.process_file(make_clean_file())
+        assert client.delete(result.id) is True
+        with pytest.raises(ScaniiError):
+            client.delete(result.id)
+
+    def test_delete_unknown_id_raises(self, client):
+        with pytest.raises(ScaniiError):
+            client.delete(self.UNKNOWN_ID)
+
+    def test_delete_trace_unknown_id_raises(self, client):
+        with pytest.raises(ScaniiError):
+            client.delete_trace(self.UNKNOWN_ID)
+
+    def test_delete_empty_id_raises_value_error(self, client):
+        with pytest.raises(ValueError):
+            client.delete("")
+        with pytest.raises(ValueError):
+            client.delete_trace("")
+
+
+# ---------------------------------------------------------------------------
 # Auth token lifecycle
 # ---------------------------------------------------------------------------
 

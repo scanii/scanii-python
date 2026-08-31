@@ -448,6 +448,68 @@ class TestAuthTokens:
 
 
 # ---------------------------------------------------------------------------
+# delete / delete_trace
+# ---------------------------------------------------------------------------
+
+class TestDelete:
+    def test_delete_sends_delete_to_files_path(self):
+        mock_resp = _mock_response(204, "")
+        with patch("urllib.request.urlopen", return_value=mock_resp) as m:
+            assert _make_client().delete("abc") is True
+        req = m.call_args[0][0]
+        assert req.get_method() == "DELETE"
+        assert req.full_url == f"{ENDPOINT}/v2.2/files/abc"
+
+    def test_delete_trace_sends_delete_to_trace_path(self):
+        mock_resp = _mock_response(204, "")
+        with patch("urllib.request.urlopen", return_value=mock_resp) as m:
+            assert _make_client().delete_trace("abc") is True
+        req = m.call_args[0][0]
+        assert req.get_method() == "DELETE"
+        assert req.full_url == f"{ENDPOINT}/v2.2/files/abc/trace"
+
+    def test_delete_url_encodes_the_id(self):
+        mock_resp = _mock_response(204, "")
+        with patch("urllib.request.urlopen", return_value=mock_resp) as m:
+            _make_client().delete("a b/c")
+        req = m.call_args[0][0]
+        assert req.full_url == f"{ENDPOINT}/v2.2/files/a%20b%2Fc"
+
+    def test_delete_404_raises(self):
+        mock_resp = _mock_response(404, json.dumps({"error": "not found"}))
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            with pytest.raises(ScaniiError):
+                _make_client().delete("missing")
+
+    def test_delete_trace_404_raises(self):
+        mock_resp = _mock_response(404, json.dumps({"error": "no trace"}))
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            with pytest.raises(ScaniiError):
+                _make_client().delete_trace("missing")
+
+    def test_delete_403_raises_auth_error(self):
+        # Per the spec, a temporary auth token is not privileged to delete.
+        mock_resp = _mock_response(403, json.dumps({"error": "forbidden"}))
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            with pytest.raises(ScaniiAuthError):
+                _make_client().delete("abc")
+
+    def test_delete_trace_403_raises_auth_error(self):
+        mock_resp = _mock_response(403, json.dumps({"error": "forbidden"}))
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            with pytest.raises(ScaniiAuthError):
+                _make_client().delete_trace("abc")
+
+    def test_delete_empty_id_raises(self):
+        with pytest.raises(ValueError):
+            _make_client().delete("")
+
+    def test_delete_trace_empty_id_raises(self):
+        with pytest.raises(ValueError):
+            _make_client().delete_trace("")
+
+
+# ---------------------------------------------------------------------------
 # Deprecation warning on ScaniiProcessingResult.error
 # ---------------------------------------------------------------------------
 
